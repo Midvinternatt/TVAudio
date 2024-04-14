@@ -1,4 +1,6 @@
 
-config.json
 JSON.ahk
 TVAudio.bat
+nircmd.exe
+settings.json
+TVAudio.exe
