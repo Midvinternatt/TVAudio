@@ -22,7 +22,7 @@ InitScript() {
 
 	A_TrayMenu.Delete()
 
-	A_TrayMenu.Add("Start Kodi TV", MenuEvent.StartKodiTV)
+	A_TrayMenu.Add("Start Kodi TV", MenuEvent.StartKodiTV.Bind(MenuEvent))
 	A_TrayMenu.Add()
 
 	for deviceTitle, deviceName in Settings.Devices {
@@ -30,21 +30,21 @@ InitScript() {
 	}
 	A_TrayMenu.Add()
 	
-	A_TrayMenu.Add("Notification message", MenuEvent.Dummy)
+	A_TrayMenu.Add("Notification message", MenuEvent.Dummy.Bind(MenuEvent))
 	if(Settings.MessageNotification)
 		A_TrayMenu.Check("Notification message")
 	
-	A_TrayMenu.Add("Notification audio", MenuEvent.Dummy)
+	A_TrayMenu.Add("Notification audio", MenuEvent.Dummy.Bind(MenuEvent))
 	if(Settings.AudioNotification)
 		A_TrayMenu.Check("Notification audio")
 
-	A_TrayMenu.Add("Settings", MenuEvent.OpenSettings)
-	A_TrayMenu.Add("Exit", MenuEvent.Exit)
+	A_TrayMenu.Add("Settings", MenuEvent.OpenSettings.Bind(MenuEvent))
+	A_TrayMenu.Add("Exit", MenuEvent.Exit.Bind(MenuEvent))
 }
 
 
 class MenuEvent {
-	static StartKodiTV(ItemName, ItemPos, *) {
+	static StartKodiTV(*) {
 		if(Settings.MessageNotification)
 			TrayTip("Starting Kodi TV", "TV Audio")
 
@@ -81,7 +81,7 @@ class MenuEvent {
 		}
 	}
 
-	static OpenSettings(ItemName, ItemPos, *) {
+	static OpenSettings(*) {
 		RunWait("notepad.exe " SETTINGS_FILEPATH,,, &processId)
 		WinWaitClose("ahk_pid " processId)
 		TrayTip("Updated settings", "TV Audio")
@@ -93,7 +93,7 @@ class MenuEvent {
 		A_TrayMenu.Show(xPos, yPos + 50)
 	}
 
-	static Exit(ItemName, ItemPos, *) {
+	static Exit(*) {
 		ExitApp()
 	}
 }
@@ -143,6 +143,20 @@ class Settings {
 		data := file.Read()
 		file.Close()
 		Settings.instance := JSON_Load(data)
+
+		activeDevices := Map()
+		for Device in ComObjGet("winmgmts:").ExecQuery("Select * from Win32_PnPEntity Where PNPClass='AudioEndpoint' Or PNPClass='Ljudslutpunkt'") {
+			activeDevices[Device.name] := "hej"
+		}
+
+		newDeviceList := Settings.instance["devices"].Clone()
+		for deviceName, deviceId in Settings.instance["devices"] {
+			if(deviceName=="TV")
+				continue
+			if(not activeDevices.Has(deviceId))
+				newDeviceList.Delete(deviceName)
+		}
+		Settings.instance["devices"] := newDeviceList
 	}
 
 	static kodiApplicationPath {
@@ -192,4 +206,7 @@ class Overlay {
 	static OnClick(*) {
 		Overlay.Hide()
 	}
+}
+^r:: {
+	Reload()
 }
