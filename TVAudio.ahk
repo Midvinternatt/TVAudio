@@ -188,7 +188,6 @@ class Overlay {
 	}
 	static Hide() {
 		Overlay.instance.Hide()
-		Overlay.instance.Destroy()
 	}
 	static OnClick(*) {
 		Overlay.Hide()
