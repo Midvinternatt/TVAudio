@@ -1,12 +1,7 @@
+#Requires AutoHotkey v2.0
 #SingleInstance Force
 Persistent
-
 #Include JSON.ahk
-
-; https://www.nirsoft.net/utils/nircmd2.html#using
-; https://www.nirsoft.net/utils/sound_volume_view.html#command_line
-; https://www.reddit.com/r/AutoHotkey/comments/f38o95/muting_specific_application_with_nircmd/
-; https://www.autohotkey.com/docs/v2/lib/SoundGetName.htm
 
 TRAY_TITLE := "TV Audio"
 TRAY_ICON := "trayicon.ico"
@@ -42,7 +37,6 @@ InitScript() {
 	A_TrayMenu.Add("Exit", MenuEvent.Exit.Bind(MenuEvent))
 }
 
-
 class MenuEvent {
 	static StartKodiTV(*) {
 		if(Settings.MessageNotification)
@@ -50,8 +44,8 @@ class MenuEvent {
 
 		if(SoundDevice.ResetTo(Settings.Device["TV"])) {
 			Overlay.Show()
-			Sleep(20000)
-			Run(Settings.kodiApplicationPath)
+			Sleep(Settings.TVDelay)
+			Run(Settings.KodiApplicationPath)
 			Sleep(1000)
 			Overlay.Hide()
 		}
@@ -60,6 +54,7 @@ class MenuEvent {
 				TrayTip("Failed to start Kodi TV", "TV Audio")
 		}
 	}
+
 	static ResetToSoundDevice(ItemName, ItemPos, *) {
 		global config
 
@@ -103,6 +98,7 @@ class SoundDevice {
 		RunWait("nircmd.exe setdefaultsounddevice " deviceName)
 		return SoundGetName()==deviceName
 	}
+
 	static ResetTo(deviceName) {
 		if(SoundDevice.WaitUntilExists(Settings.Device["TV"])) {
 			Sleep(1000)
@@ -111,6 +107,7 @@ class SoundDevice {
 
 		return false
 	}
+
 	static WaitUntilExists(deviceName, timeout:=300000) { ; 5 minues
 		endTime := A_TickCount + timeout
 
@@ -121,16 +118,6 @@ class SoundDevice {
 			}
 
 			Sleep(1000)
-
-			; Loop {
-			; 	try
-			; 		devName := SoundGetName(, dev := A_Index)
-			; 	catch
-			; 		break
-				
-			; 	if(devName==deviceName && MonitorGetCount() > 2)
-			; 		return true
-			; }
 		}
 
 		return false
@@ -142,71 +129,82 @@ class Settings {
 		file := FileOpen(SETTINGS_FILEPATH, "r")
 		data := file.Read()
 		file.Close()
-		Settings.instance := JSON_Load(data)
+		Settings._data := JSON_Load(data)
 
 		activeDevices := Map()
 		for Device in ComObjGet("winmgmts:").ExecQuery("Select * from Win32_PnPEntity Where PNPClass='AudioEndpoint' Or PNPClass='Ljudslutpunkt'") {
-			activeDevices[Device.name] := "hej"
+			activeDevices[Device.name] := true
 		}
 
-		newDeviceList := Settings.instance["devices"].Clone()
-		for deviceName, deviceId in Settings.instance["devices"] {
+		newDeviceList := Settings._data["devices"].Clone()
+		for deviceName, deviceId in Settings._data["devices"] {
 			if(deviceName=="TV")
 				continue
 			if(not activeDevices.Has(deviceId))
 				newDeviceList.Delete(deviceName)
 		}
-		Settings.instance["devices"] := newDeviceList
+		Settings._data["devices"] := newDeviceList
 	}
 
-	static kodiApplicationPath {
+	static KodiApplicationPath {
 		get {
-			return Settings.instance["kodiApplicationPath"]
+			return Settings._data["kodiApplicationPath"]
 		}
 	}
 
-	static Devices {
+	static TVDelay {
 		get {
-			return Settings.instance["devices"]
-		}
-	}
-
-	static Device[deviceName] {
-		get {
-			return Settings.instance["devices"][deviceName]
+			return Settings._data["tvDelay"]
 		}
 	}
 
 	static MessageNotification {
 		get {
-			return Settings.instance["showNotification"]
+			return Settings._data["showNotification"]
 		}
 	}
 
 	static AudioNotification {
 		get {
-			return Settings.instance["playNotificationAudio"]
+			return Settings._data["playNotificationAudio"]
+		}
+	}
+
+	static Devices {
+		get {
+			return Settings._data["devices"]
+		}
+	}
+
+	static Device[deviceName] {
+		get {
+			return Settings._data["devices"][deviceName]
 		}
 	}
 }
 
 class Overlay {
 	static Show() {
-		Overlay.instance := Gui("+AlwaysOnTop -SysMenu -Theme -Caption")
-		Overlay.instance.BackColor := "000000"
-		Overlay.button := Overlay.instance.Add("Picture", "W" A_ScreenWidth " H" A_ScreenHeight " X0 Y0")
+		Overlay._gui := Gui("+AlwaysOnTop -SysMenu -Theme -Caption")
+		Overlay._gui.BackColor := "000000"
+		Overlay.button := Overlay._gui.Add("Picture", "W" A_ScreenWidth " H" A_ScreenHeight " X0 Y0")
 		Overlay.button.OnEvent("Click", Overlay.OnClick.Bind(Overlay))
-		Overlay.text := Overlay.instance.Add("Text", "W" A_ScreenWidth " H" A_ScreenHeight " X0 Y450 Center", "Starting Kodi")
+		Overlay.text := Overlay._gui.Add("Text", "W" A_ScreenWidth " H" A_ScreenHeight " X0 Y450 Center", "Starting Kodi")
 		Overlay.text.SetFont("s48 cWhite")
-		Overlay.instance.Show("W" A_ScreenWidth " H" A_ScreenHeight " X0 Y0")
+		Overlay._gui.Show("W" A_ScreenWidth " H" A_ScreenHeight " X0 Y0")
 	}
+
 	static Hide() {
-		Overlay.instance.Hide()
+		Overlay._gui.Hide()
 	}
+	
 	static OnClick(*) {
 		Overlay.Hide()
 	}
 }
-^r:: {
-	Reload()
+
+if(not A_IsCompiled) {
+	^r:: {
+		Reload()
+	}
 }
