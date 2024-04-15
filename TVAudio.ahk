@@ -127,9 +127,9 @@ class SoundDevice {
 class Settings {
 	static Load() {
 		file := FileOpen(SETTINGS_FILEPATH, "r")
-		_data := file.Read()
+		data := file.Read()
 		file.Close()
-		Settings._data := JSON_Load(_data)
+		Settings._data := JSON_Load(data)
 
 		activeDevices := Map()
 		for Device in ComObjGet("winmgmts:").ExecQuery("Select * from Win32_PnPEntity Where PNPClass='AudioEndpoint' Or PNPClass='Ljudslutpunkt'") {
