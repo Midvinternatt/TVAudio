@@ -197,14 +197,13 @@ class Overlay {
 	static Hide() {
 		Overlay._gui.Hide()
 	}
-	
+
 	static OnClick(*) {
 		Overlay.Hide()
 	}
 }
 
-if(not A_IsCompiled) {
-	^r:: {
-		Reload()
-	}
+#HotIf (not A_IsCompiled)
+^r:: {
+	Reload()
 }
